@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1115" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="DDP" />
+<meta name="format-detection" content="telephone=no" />
+<title>EXW → DDP</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+    }
+    :root { color-scheme: dark; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #0f1115;
+        overscroll-behavior: none;
+        padding: calc(16px + env(safe-area-inset-top))
+                 calc(16px + env(safe-area-inset-right))
+                 calc(16px + env(safe-area-inset-bottom))
+                 calc(16px + env(safe-area-inset-left));
+    }
+    .calc {
+        background: #1a1d24;
+        border-radius: 16px;
+        padding: 24px 22px;
+        width: 100%;
+        max-width: 480px;
+        margin: auto;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, .55);
+        touch-action: manipulation;
+    }
+    /* ===== 头部 ===== */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        flex: 1;
+        min-width: 0;
+    }
+    h1 {
+        color: #e8e8e8;
+        font-size: 18px;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    .mode-group {
+        display: flex;
+        gap: 4px;
+        background: #242830;
+        border-radius: 20px;
+        padding: 3px;
+        flex-shrink: 0;
+    }
+    .mode-btn {
+        background: transparent;
+        border: none;
+        border-radius: 18px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #9aa0a6;
+        cursor: pointer;
+        transition: all .25s;
+        white-space: nowrap;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .mode-btn.active {
+        background: #2a2e38;
+        color: #e8e8e8;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+    }
+    .mode-btn:hover:not(.active) { color: #c8d0dc; }
+    .header-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .lang-btn,
+    .clear-btn {
+        background: #2a2e38;
+        border: 1px solid #3f4552;
+        border-radius: 20px;
+        color: #c8d0dc;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 18px;
+        cursor: pointer;
+        transition: all .25s;
+        white-space: nowrap;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .lang-btn:hover,
+    .clear-btn:hover {
+        background: #353b48;
+        border-color: #5b8def;
+        color: #fff;
+    }
+    .clear-btn {
+        border-color: #5f3a3a;
+        color: #e8a0a0;
+    }
+    .clear-btn:hover {
+        border-color: #e06060;
+        color: #ffb0b0;
+    }
+    /* ===== 输入网格 ===== */
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 14px;
+        margin-top: 6px;
+    }
+    .field {
+        display: flex;
+        flex-direction: column;
+    }
+    .field label {
+        color: #9aa0a6;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 2px 4px;
+        margin-bottom: 4px;
+    }
+    .field label a {
+        color: #5b8def;
+        text-decoration: none;
+        font-size: 14px;
+        line-height: 1;
+        margin-left: 2px;
+    }
+    .field label a:hover { text-decoration: underline; }
+    .field input {
+        width: 100%;
+        background: #242830;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 11px 12px;
+        color: #fff;
+        font-size: 16px;          /* iOS 关键：不能小于 16px */
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        transition: border .2s, box-shadow .2s;
+    }
+    .field input:focus {
+        border-color: #5b8def;
+        box-shadow: 0 0 0 2px rgba(91, 141, 239, .15);
+    }
+    .field.hidden { display: none; }
+    /* ===== 重货/抛货标识 ===== */
+    .badge-wrap {
+        text-align: center;
+        min-height: 32px;
+        margin-top: 8px;
+    }
+    .type-badge {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+    }
+    .light { background: #3a2a1a; color: #ffb347; }
+    .heavy { background: #1a2a3a; color: #5b9dff; }
+    /* ===== 结果 ===== */
+    .result {
+        background: #242830;
+        border-radius: 10px;
+        padding: 18px 16px 14px;
+        margin-top: 14px;
+        text-align: center;
+    }
+    .result .result-label {
+        color: #9aa0a6;
+        font-size: 13px;
+        display: block;
+        margin-bottom: 2px;
+    }
+    .result .ddp-price {
+        color: #4ade80;
+        font-size: 30px;
+        font-weight: 700;
+        display: block;
+        letter-spacing: 0.5px;
+        line-height: 1.3;
+        cursor: pointer;
+        font-variant-numeric: tabular-nums;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .result .ddp-price:active { opacity: .7; }
+    .result .ddp-price.ddp-placeholder {
+        color: #5a6a7a;
+        font-weight: 400;
+        font-size: 22px;
+        cursor: default;
+    }
+    /* ===== 费用明细 ===== */
+    .detail-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 2px 12px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #2a2e38;
+        font-size: 11px;
+        color: #8a9aa8;
+    }
+    .detail-row .d-item { white-space: nowrap; }
+    .detail-row .d-item .d-label { color: #6a7a88; }
+    .detail-row .d-item .d-value {
+        color: #c8d8e8;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+    }
+    .detail-row.hidden { display: none; }
+    /* ===== 底部说明 ===== */
+    .note {
+        color: #5a6a7a;
+        font-size: 11px;
+        text-align: center;
+        margin-top: 14px;
+        line-height: 1.5;
+    }
+    /* ===== Toast ===== */
+    .toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(28px + env(safe-area-inset-bottom));
+        transform: translateX(-50%) translateY(16px);
+        background: #2a2e38;
+        color: #e8e8e8;
+        border: 1px solid #3f4552;
+        padding: 9px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .2s, transform .2s;
+        z-index: 999;
+        white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    /* ===== 响应式 ===== */
+    @media (max-width: 500px) {
+        .calc { padding: 18px 14px; }
+        .grid { gap: 10px; }
+        .header-left { gap: 8px; }
+        h1 { font-size: 16px; }
+        .mode-btn { font-size: 12px; padding: 6px 10px; }
+        .result .ddp-price { font-size: 26px; }
+        .detail-row { font-size: 10px; gap: 2px 8px; }
+        .field input { padding: 10px; font-size: 16px; }
+        .header-actions { gap: 4px; }
+        .lang-btn, .clear-btn { font-size: 12px; padding: 7px 12px; }
+    }
+    @media (max-width: 400px) {
+        .grid { grid-template-columns: 1fr; }
+        .header { flex-direction: column; align-items: stretch; }
+        .header-left { flex-wrap: wrap; justify-content: center; }
+        .header-actions { align-self: flex-end; }
+    }
+</style>
+</head>
+<body>
+    <div class="calc">
+        <div class="header">
+            <div class="header-left">
+                <h1 id="pageTitle">EXW → DDP</h1>
+                <div class="mode-group">
+                    <button class="mode-btn active" id="modeTrade">智能贸易</button>
+                    <button class="mode-btn" id="modeDelivery">智能交付</button>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="clear-btn" id="clearBtn">🗑️</button>
+                <button class="lang-btn" id="langToggle"></button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="field">
+                <label id="lblExw">结算价 EXW (¥)</label>
+                <input id="exw" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 100" />
+            </div>
+            <div class="field" id="fieldRate">
+                <label id="lblRate">莫斯科央行汇率 (¥→₽)</label>
+                <input id="rate" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 12" />
+            </div>
+            <div class="field">
+                <label id="lblWeight">毛重 /件 (kg)</label>
+                <input id="weight" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 2.5" />
+            </div>
+            <div class="field">
+                <label id="lblVolume">体积 /件 (m³)</label>
+                <input id="volume" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 0.01" />
+            </div>
+            <div class="field" id="fieldQty">
+                <label id="lblQty">箱内数量</label>
+                <input id="qty" type="text" inputmode="numeric" autocomplete="off" placeholder="例: 10" />
+            </div>
+            <div class="field" id="fieldExpFee">
+                <label id="lblExpFee">出口代理费率 (%)</label>
+                <input id="expFee" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 3" />
+            </div>
+            <div class="field">
+                <label id="lblImpFee">进口代理费率 (%)</label>
+                <input id="impFee" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 10" />
+            </div>
+            <div class="field">
+                <label id="lblTariff">关税税率 (%) <a href="http://115.190.216.192:18080/agent-test" target="_blank" title="海关税则智能体查询">🐟</a></label>
+                <input id="tariff" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 10" />
+            </div>
+            <div class="field" id="fieldCertFee">
+                <label id="lblCertFee">单证费用 (¥)</label>
+                <input id="certFee" type="text" inputmode="decimal" autocomplete="off" placeholder="例: 1000" />
+            </div>
+            <div class="field">
+                <label id="lblVat">增值税率 (%)</label>
+                <input id="vat" type="text" inputmode="decimal" autocomplete="off" value="22" />
+            </div>
+        </div>
+
+        <div class="badge-wrap" id="badgeWrap"></div>
+
+        <div class="result">
+            <span class="result-label" id="resultLabel">DDP 完税后交货价</span>
+            <span class="ddp-price ddp-placeholder" id="ddpDisplay">—</span>
+            <div class="detail-row" id="detailRow">
+                <span class="d-item"><span class="d-label" id="dlFreight">运费</span> <span class="d-value" id="dvFreight">—</span></span>
+                <span class="d-item"><span class="d-label" id="dlTariffAmt">关税</span> <span class="d-value" id="dvTariff">—</span></span>
+                <span class="d-item"><span class="d-label" id="dlCustoms">海关杂费</span> <span class="d-value" id="dvCustoms">—</span></span>
+                <span class="d-item"><span class="d-label" id="dlService">服务费</span> <span class="d-value" id="dvService">—</span></span>
+                <span class="d-item"><span class="d-label" id="dlInsurance">保险费</span> <span class="d-value" id="dvInsurance">—</span></span>
+                <span class="d-item"><span class="d-label" id="dlCertFee">单证费</span> <span class="d-value" id="dvCertFee">—</span></span>
+                <span class="d-item"><span class="d-label" id="dlVatAmt">增值税</span> <span class="d-value" id="dvVat">—</span></span>
+            </div>
+        </div>
+
+        <div class="note" id="noteText">毛重/体积为单个产品数值 · 关税税率可通过 🐟 查询 · 一键清空🗑️ · 当日汇率可通过💰查询</div>
+    </div>
+
+<script>
+    // ================================================================
+    //  语言
+    // ================================================================
+    const LOCALES = {
+        zh: {
+            title: 'EXW → DDP',
+            lblExw: '结算价 EXW (¥)',
+            lblRate: '莫斯科央行汇率 (¥→₽)',
+            lblWeight: '毛重 /件 (kg)',
+            lblVolume: '体积 /件 (m³)',
+            lblQty: '箱内数量',
+            lblExpFee: '出口代理费率 (%)',
+            lblImpFee: '进口代理费率 (%)',
+            lblTariff: '关税税率 (%)',
+            lblCertFee: '单证费用 (¥)',
+            lblVat: '增值税率 (%)',
+            resultLabel: 'DDP 完税后交货价',
+            note: '计算单个产品时不填箱内数量 · 关税税率可通过 🐟 查询 · 一键清空🗑️ · 当日汇率可通过💰查询',
+            lightBadge: '抛货 · 密度 {density} < 250 · 按体积计费',
+            heavyBadge: '重货 · 密度 {density} ≥ 250 · 按重量计费',
+            placeholderExw: '例: 100',
+            placeholderRate: '例: 12',
+            placeholderWeight: '例: 2.5',
+            placeholderVolume: '例: 0.01',
+            placeholderQty: '例: 10',
+            placeholderExpFee: '例: 3',
+            placeholderImpFee: '例: 10',
+            placeholderTariff: '例: 10',
+            placeholderCertFee: '例: 1000',
+            langBtn: '🇷🇺',
+            clearBtn: '🗑️',
+            langAttr: 'zh',
+            dFreight: '运费',
+            dTariff: '关税',
+            dCustoms: '海关杂费',
+            dService: '服务费',
+            dInsurance: '保险费',
+            dCertFee: '单证费',
+            dVat: '增值税',
+            modeDelivery: '智能交付',
+            modeTrade: '智能贸易',
+            rateLinkTitle: '查询当日汇率',
+            codeLinkTitle: '查询海关编码',
+            copied: '已复制到剪贴板',
+            copyHint: '点击价格可复制'
+        },
+        ru: {
+            title: 'EXW → DDP',
+            lblExw: 'Цена EXW (¥)',
+            lblRate: 'Курс ЦБ (¥→₽)',
+            lblWeight: 'Вес брутто /шт (kg)',
+            lblVolume: 'Объем /шт (m³)',
+            lblQty: 'Кол-во в коробке',
+            lblExpFee: 'Экспортная ставка (%)',
+            lblImpFee: 'Импортная ставка (%)',
+            lblTariff: 'Ставка пошлины (%)',
+            lblCertFee: 'Стоимость сертификаци (¥)',
+            lblVat: 'НДС (%)',
+            resultLabel: 'Цена DDP',
+            note: 'Для расчёта одного изделия количество в коробке не указывается. · Ставку пошлины можно узнать через 🐟 · Очистить всё🗑️ · Сегодняшний курс можно узнать через 💰',
+            lightBadge: 'Лёгкий груз · Плотность {density} < 250 · Тарификация по объёму',
+            heavyBadge: 'Тяжёлый груз · Плотность {density} ≥ 250 · Тарификация по весу',
+            placeholderExw: 'Пример: 100',
+            placeholderRate: 'Пример: 12',
+            placeholderWeight: 'Пример: 2.5',
+            placeholderVolume: 'Пример: 0.01',
+            placeholderQty: 'Пример: 10',
+            placeholderExpFee: 'Пример: 3',
+            placeholderImpFee: 'Пример: 10',
+            placeholderTariff: 'Пример: 10',
+            placeholderCertFee: 'Пример: 1000',
+            langBtn: '🇨🇳',
+            clearBtn: '🗑️',
+            langAttr: 'ru',
+            dFreight: 'Доставка',
+            dTariff: 'Пошлина',
+            dCustoms: 'Тамож. сборы',
+            dService: 'Услуги',
+            dInsurance: 'Страховка',
+            dCertFee: 'Сертификат',
+            dVat: 'НДС',
+            modeDelivery: 'СМАРТ ПОСТАВКА',
+            modeTrade: 'СМАРТ МАРКЕТ',
+            rateLinkTitle: 'Посмотреть курс',
+            codeLinkTitle: 'Посмотреть ТН ВЭД',
+            copied: 'Скопировано',
+            copyHint: 'Нажмите, чтобы скопировать'
+        }
+    };
+
+    let currentLang = 'zh';
+    let currentMode = 'trade';
+
+    // ================================================================
+    //  DOM
+    // ================================================================
+    const $ = id => document.getElementById(id);
+    const el = {
+        pageTitle: $('pageTitle'), langToggle: $('langToggle'), clearBtn: $('clearBtn'),
+        modeDelivery: $('modeDelivery'), modeTrade: $('modeTrade'),
+        lblExw: $('lblExw'), lblRate: $('lblRate'), lblWeight: $('lblWeight'),
+        lblVolume: $('lblVolume'), lblQty: $('lblQty'), lblExpFee: $('lblExpFee'),
+        lblImpFee: $('lblImpFee'), lblTariff: $('lblTariff'), lblCertFee: $('lblCertFee'),
+        lblVat: $('lblVat'), resultLabel: $('resultLabel'), noteText: $('noteText'),
+        badgeWrap: $('badgeWrap'), ddpDisplay: $('ddpDisplay'), detailRow: $('detailRow'),
+        dvFreight: $('dvFreight'), dvTariff: $('dvTariff'), dvCustoms: $('dvCustoms'),
+        dvService: $('dvService'), dvInsurance: $('dvInsurance'), dvCertFee: $('dvCertFee'),
+        dvVat: $('dvVat'), dlFreight: $('dlFreight'), dlTariffAmt: $('dlTariffAmt'),
+        dlCustoms: $('dlCustoms'), dlService: $('dlService'), dlInsurance: $('dlInsurance'),
+        dlCertFee: $('dlCertFee'), dlVatAmt: $('dlVatAmt'),
+        exw: $('exw'), rate: $('rate'), weight: $('weight'), volume: $('volume'),
+        qty: $('qty'), expFee: $('expFee'), impFee: $('impFee'), tariff: $('tariff'),
+        certFee: $('certFee'), vat: $('vat'),
+        fieldRate: $('fieldRate'), fieldExpFee: $('fieldExpFee'),
+        fieldCertFee: $('fieldCertFee'), fieldQty: $('fieldQty')
+    };
+
+    // ================================================================
+    //  数值读取（兼容逗号小数点，俄语同事必备）
+    // ================================================================
+    function num(id) {
+        const node = $(id);
+        if (!node) return 0;
+        const raw = String(node.value || '')
+            .replace(/\s/g, '')
+            .replace(/,/g, '.');
+        const n = parseFloat(raw);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    // ================================================================
+    //  海关杂费阶梯 (2026)
+    // ================================================================
+    const CUSTOMS_THRESHOLDS_RUB = [200000, 450000, 1200000, 2700000, 4200000, 5500000, 7000000];
+    const CUSTOMS_FEES_RUB = [1231, 2462, 4924, 13541, 18465, 21344, 49240, 73860];
+    function getCustomsFeeRub(valueRub) {
+        let idx = CUSTOMS_THRESHOLDS_RUB.findIndex(th => valueRub <= th);
+        if (idx === -1) idx = CUSTOMS_FEES_RUB.length - 1;
+        return CUSTOMS_FEES_RUB[idx];
+    }
+
+    // ================================================================
+    //  Toast
+    // ================================================================
+    let toastTimer = null;
+    function showToast(msg) {
+        let t = $('toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'toast';
+            t.className = 'toast';
+            document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
+    }
+
+    // ================================================================
+    //  语言
+    // ================================================================
+    function applyLanguage(lang) {
+        const t = LOCALES[lang];
+        if (!t) return;
+        document.documentElement.lang = t.langAttr || lang;
+        el.pageTitle.textContent = t.title;
+        el.lblExw.textContent = t.lblExw;
+        el.lblRate.innerHTML = t.lblRate + ' <a href="https://cbr.ru/currency_base/daily/" target="_blank" title="' + t.rateLinkTitle + '">💰</a>';
+        el.lblWeight.textContent = t.lblWeight;
+        el.lblVolume.textContent = t.lblVolume;
+        el.lblQty.textContent = t.lblQty;
+        el.lblExpFee.textContent = t.lblExpFee;
+        el.lblImpFee.textContent = t.lblImpFee;
+        el.lblTariff.innerHTML = t.lblTariff + ' <a href="http://115.190.216.192:18080/agent-test" target="_blank" title="' + t.codeLinkTitle + '">🐟</a>';
+        el.lblCertFee.textContent = t.lblCertFee;
+        el.lblVat.textContent = t.lblVat;
+        el.resultLabel.textContent = t.resultLabel;
+        el.noteText.textContent = t.note;
+        el.dlFreight.textContent = t.dFreight;
+        el.dlTariffAmt.textContent = t.dTariff;
+        el.dlCustoms.textContent = t.dCustoms;
+        el.dlService.textContent = t.dService;
+        el.dlInsurance.textContent = t.dInsurance;
+        el.dlCertFee.textContent = t.dCertFee;
+        el.dlVatAmt.textContent = t.dVat;
+        el.exw.placeholder = t.placeholderExw;
+        el.rate.placeholder = t.placeholderRate;
+        el.weight.placeholder = t.placeholderWeight;
+        el.volume.placeholder = t.placeholderVolume;
+        el.qty.placeholder = t.placeholderQty;
+        el.expFee.placeholder = t.placeholderExpFee;
+        el.impFee.placeholder = t.placeholderImpFee;
+        el.tariff.placeholder = t.placeholderTariff;
+        el.certFee.placeholder = t.placeholderCertFee;
+        el.modeDelivery.textContent = t.modeDelivery;
+        el.modeTrade.textContent = t.modeTrade;
+        el.clearBtn.textContent = t.clearBtn;
+        el.clearBtn.title = t.clearBtn;
+        el.ddpDisplay.title = t.copyHint;
+        const nextLang = lang === 'zh' ? 'ru' : 'zh';
+        el.langToggle.textContent = LOCALES[nextLang].langBtn;
+        currentLang = lang;
+        calc();
+    }
+    function toggleLanguage() {
+        applyLanguage(currentLang === 'zh' ? 'ru' : 'zh');
+    }
+
+    // ================================================================
+    //  清空
+    // ================================================================
+    function clearAll() {
+        ['exw', 'rate', 'weight', 'volume', 'qty', 'tariff', 'certFee'].forEach(id => {
+            const f = $(id);
+            if (f) f.value = '';
+        });
+        // tariff 是持久化的，一并清掉
+        try { localStorage.removeItem('ddp_tariff'); } catch (e) {}
+        calc();
+    }
+
+    // ================================================================
+    //  模式切换
+    // ================================================================
+    function setMode(mode) {
+        currentMode = mode;
+        el.modeDelivery.classList.toggle('active', mode === 'delivery');
+        el.modeTrade.classList.toggle('active', mode === 'trade');
+        const isDelivery = mode === 'delivery';
+        el.fieldRate.classList.toggle('hidden', !isDelivery);
+        el.fieldCertFee.classList.toggle('hidden', !isDelivery);
+        el.fieldExpFee.classList.toggle('hidden', isDelivery);
+        el.fieldQty.classList.toggle('hidden', isDelivery);
+        el.detailRow.classList.toggle('hidden', !isDelivery);
+        calc();
+    }
+
+    // ================================================================
+    //  核心计算
+    // ================================================================
+    function calc() {
+        const exw = num('exw');
+        const w_raw = num('weight');
+        const v_raw = num('volume');
+        const qty = num('qty');
+        const impFee = num('impFee');
+        const tariffPct = num('tariff');
+
+        // 增值税：空 → 22%，显式填 0 → 0%
+        const vatRaw = String(el.vat.value || '').trim();
+        const vatPct = vatRaw === '' ? 22 : num('vat');
+
+        // 重货 / 抛货标识
+        let density = 0;
+        let isLight = true;
+        let badgeHtml = '';
+        const t = LOCALES[currentLang];
+        if (w_raw > 0 && v_raw > 0) {
+            density = w_raw / v_raw;
+            isLight = density < 250;
+            const badgeKey = isLight ? 'lightBadge' : 'heavyBadge';
+            const badgeText = t[badgeKey].replace(/\{density\}/g, density.toFixed(1));
+            badgeHtml = '<span class="type-badge ' + (isLight ? 'light' : 'heavy') + '">' + badgeText + '</span>';
+        }
+        el.badgeWrap.innerHTML = badgeHtml;
+
+        let w_calc = w_raw;
+        let v_calc = v_raw;
+
+        // ---- 智能交付 ----
+        if (currentMode === 'delivery') {
+            const rate = num('rate');
+            const certFee = num('certFee');
+            if (!exw || !w_raw || !v_raw || !rate) {
+                el.ddpDisplay.textContent = '—';
+                el.ddpDisplay.className = 'ddp-price ddp-placeholder';
+                ['dvFreight','dvTariff','dvCustoms','dvService','dvInsurance','dvCertFee','dvVat']
+                    .forEach(id => { $(id).textContent = '—'; });
+                return;
+            }
+            let intlFreight, domesticFreight;
+            if (isLight) {
+                intlFreight = 1610 * v_raw;
+                domesticFreight = 300 * v_raw;
+            } else {
+                intlFreight = 8.4 * w_raw;
+                domesticFreight = 2.5 * w_raw;
+            }
+            const tariffAmt = (exw + domesticFreight) * (tariffPct / 100);
+            const goodsValueRub = exw * rate;
+            const customsFeeRub = getCustomsFeeRub(goodsValueRub);
+            const customsFeeCny = customsFeeRub / rate;
+            const serviceFee = (exw + intlFreight + tariffAmt + customsFeeCny) * (impFee / 100);
+            const insurance = exw * 0.003;
+            const baseBeforeVat = exw + intlFreight + tariffAmt + customsFeeCny + serviceFee + insurance + certFee;
+            const vatAmt = baseBeforeVat * (vatPct / 100);
+            const ddp = baseBeforeVat + vatAmt;
+
+            el.ddpDisplay.textContent = '¥ ' + ddp.toFixed(2);
+            el.ddpDisplay.className = 'ddp-price';
+            el.dvFreight.textContent = '¥ ' + intlFreight.toFixed(2);
+            el.dvTariff.textContent = '¥ ' + tariffAmt.toFixed(2);
+            el.dvCustoms.textContent = '¥ ' + customsFeeCny.toFixed(2);
+            el.dvService.textContent = '¥ ' + serviceFee.toFixed(2);
+            el.dvInsurance.textContent = '¥ ' + insurance.toFixed(2);
+            el.dvCertFee.textContent = '¥ ' + certFee.toFixed(2);
+            el.dvVat.textContent = '¥ ' + vatAmt.toFixed(2);
+            return;
+        }
+
+        // ---- 智能贸易 ----
+        if (currentMode === 'trade') {
+            const expFee = num('expFee');
+            if (!exw || !w_raw || !v_raw) {
+                el.ddpDisplay.textContent = '—';
+                el.ddpDisplay.className = 'ddp-price ddp-placeholder';
+                return;
+            }
+            if (qty > 0) {
+                if (isLight) {
+                    v_calc = v_raw / qty;
+                } else {
+                    w_calc = w_raw / qty;
+                }
+            }
+            let cnFee, ruFee;
+            if (isLight) {
+                cnFee = v_calc * 300;
+                ruFee = v_calc * 1000;
+            } else {
+                cnFee = w_calc * 1.2;
+                ruFee = w_calc * 7;
+            }
+            const base = exw * (1 + expFee / 100);
+            const tariffCost = (base + cnFee) * tariffPct / 100;
+            const ddp = (base + tariffCost + ruFee) * (1 + impFee / 100) * (1 + vatPct / 100);
+            el.ddpDisplay.textContent = '¥ ' + ddp.toFixed(2);
+            el.ddpDisplay.className = 'ddp-price';
+            return;
+        }
+    }
+
+    // ================================================================
+    //  点击复制结果
+    // ================================================================
+    async function copyPrice() {
+        const txt = el.ddpDisplay.textContent || '';
+        const m = txt.match(/[\d]+(?:[.,]\d+)?/);
+        if (!m) return;
+        const value = m[0];
+        let ok = false;
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(value);
+                ok = true;
+            }
+        } catch (e) { /* 降级 */ }
+        if (!ok) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = value;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                document.body.appendChild(ta);
+                ta.select();
+                ta.setSelectionRange(0, value.length);
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                ok = true;
+            } catch (e) { ok = false; }
+        }
+        if (ok) showToast(LOCALES[currentLang].copied);
+    }
+
+    // ================================================================
+    //  持久化（费率类字段，打开即用）
+    // ================================================================
+    const PERSIST = ['expFee', 'impFee', 'tariff', 'vat'];
+
+    // ================================================================
+    //  事件
+    // ================================================================
+    const inputIds = ['exw', 'rate', 'weight', 'volume', 'qty', 'expFee', 'impFee', 'tariff', 'certFee', 'vat'];
+    inputIds.forEach(id => {
+        const node = $(id);
+        if (!node) return;
+        node.addEventListener('input', () => {
+            if (PERSIST.indexOf(id) !== -1) {
+                try { localStorage.setItem('ddp_' + id, node.value); } catch (e) {}
+            }
+            calc();
+        });
+    });
+
+    el.langToggle.addEventListener('click', toggleLanguage);
+    el.clearBtn.addEventListener('click', clearAll);
+    el.modeDelivery.addEventListener('click', () => setMode('delivery'));
+    el.modeTrade.addEventListener('click', () => setMode('trade'));
+    el.ddpDisplay.addEventListener('click', copyPrice);
+
+    // 点结果区域收起键盘（iOS 数字键盘没有"完成"键）
+    document.querySelector('.result').addEventListener('click', () => {
+        if (document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
+    });
+
+    // ================================================================
+    //  启动
+    // ================================================================
+    PERSIST.forEach(id => {
+        const node = $(id);
+        if (!node) return;
+        try {
+            const v = localStorage.getItem('ddp_' + id);
+            if (v !== null) node.value = v;
+        } catch (e) {}
+    });
+
+    applyLanguage('zh');
+    setMode('trade');
+</script>
+</body>
+</html>

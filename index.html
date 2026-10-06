@@ -240,6 +240,22 @@
         font-size: 22px;
         cursor: default;
     }
+    /* ⭐ 卢布价（第二行） */
+    .result .ddp-rub {
+        color: #7aa7ff;
+        font-size: 17px;
+        font-weight: 600;
+        display: block;
+        margin-top: 4px;
+        letter-spacing: 0.5px;
+        line-height: 1.3;
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .result .ddp-rub:empty { display: none; }
+    .result .ddp-rub:active { opacity: .7; }
     /* ===== 费用明细 ===== */
     .detail-row {
         display: flex;
@@ -289,7 +305,7 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     /* ================================================================
-       ⭐ 专注模式：点击 DDP 价格 → 隐藏全部，只显示完税后交货价
+       ⭐ 专注模式：点击 DDP 价格 → 隐藏全部，只显示完税后交货价（¥ + ₽）
        ================================================================ */
     body.focus-mode {
         padding: 0;
@@ -316,17 +332,23 @@
         margin: 0;
         width: 100%;
     }
-    /* 结果里只保留价格本身 */
-    body.focus-mode .result > *:not(.ddp-price) {
+    /* 结果里只保留价格本身（人民币 + 卢布） */
+    body.focus-mode .result > *:not(.ddp-price):not(.ddp-rub) {
         display: none !important;
     }
     body.focus-mode .result .ddp-price {
         font-size: clamp(40px, 13vw, 130px);
         line-height: 1.15;
         letter-spacing: 1px;
-        padding: 16px 10px;
+        padding: 16px 10px 0;
         word-break: break-word;
         cursor: pointer;
+        animation: pricePop .28s ease;
+    }
+    body.focus-mode .result .ddp-rub {
+        font-size: clamp(18px, 5vw, 52px);
+        margin-top: 10px;
+        padding: 0 10px 16px;
         animation: pricePop .28s ease;
     }
     @keyframes pricePop {
@@ -365,6 +387,7 @@
         h1 { font-size: 16px; }
         .mode-btn { font-size: 12px; padding: 6px 10px; }
         .result .ddp-price { font-size: 26px; }
+        .result .ddp-rub { font-size: 15px; }
         .detail-row { font-size: 10px; gap: 2px 8px; }
         .field input { padding: 10px; font-size: 16px; }
         .header-actions { gap: 4px; }
@@ -443,6 +466,7 @@
         <div class="result">
             <span class="result-label" id="resultLabel">DDP 完税后交货价</span>
             <span class="ddp-price ddp-placeholder" id="ddpDisplay">—</span>
+            <span class="ddp-rub" id="ddpRub"></span>
             <div class="detail-row" id="detailRow">
                 <span class="d-item"><span class="d-label" id="dlFreight">运费</span> <span class="d-value" id="dvFreight">—</span></span>
                 <span class="d-item"><span class="d-label" id="dlTariffAmt">关税</span> <span class="d-value" id="dvTariff">—</span></span>
@@ -575,7 +599,8 @@
         lblVolume: $('lblVolume'), lblQty: $('lblQty'), lblExpFee: $('lblExpFee'),
         lblImpFee: $('lblImpFee'), lblTariff: $('lblTariff'), lblCertFee: $('lblCertFee'),
         lblVat: $('lblVat'), resultLabel: $('resultLabel'), noteText: $('noteText'),
-        badgeWrap: $('badgeWrap'), ddpDisplay: $('ddpDisplay'), detailRow: $('detailRow'),
+        badgeWrap: $('badgeWrap'), ddpDisplay: $('ddpDisplay'), ddpRub: $('ddpRub'),
+        detailRow: $('detailRow'),
         dvFreight: $('dvFreight'), dvTariff: $('dvTariff'), dvCustoms: $('dvCustoms'),
         dvService: $('dvService'), dvInsurance: $('dvInsurance'), dvCertFee: $('dvCertFee'),
         dvVat: $('dvVat'), dlFreight: $('dlFreight'), dlTariffAmt: $('dlTariffAmt'),
@@ -672,6 +697,7 @@
         el.clearBtn.textContent = t.clearBtn;
         el.clearBtn.title = t.clearBtn;
         el.ddpDisplay.title = t.copyHint;
+        el.ddpRub.title = t.copyHint;
         if (el.focusHint) el.focusHint.textContent = t.focusHint;
         const nextLang = lang === 'zh' ? 'ru' : 'zh';
         el.langToggle.textContent = LOCALES[nextLang].langBtn;
@@ -701,18 +727,36 @@
 
     // ================================================================
     //  模式切换
+    //  ⭐ 汇率字段在两种模式下都常驻显示（智能贸易同样需要当日卢布汇率）
     // ================================================================
     function setMode(mode) {
         currentMode = mode;
         el.modeDelivery.classList.toggle('active', mode === 'delivery');
         el.modeTrade.classList.toggle('active', mode === 'trade');
         const isDelivery = mode === 'delivery';
-        el.fieldRate.classList.toggle('hidden', !isDelivery);
+        // 汇率字段：两种模式都显示
+        el.fieldRate.classList.remove('hidden');
         el.fieldCertFee.classList.toggle('hidden', !isDelivery);
         el.fieldExpFee.classList.toggle('hidden', isDelivery);
         el.fieldQty.classList.toggle('hidden', isDelivery);
         el.detailRow.classList.toggle('hidden', !isDelivery);
         calc();
+    }
+
+    // ================================================================
+    //  ⭐ 结果渲染：人民币 + 卢布 双币种
+    // ================================================================
+    function setDdpDisplay(cny) {
+        if (!Number.isFinite(cny)) {
+            el.ddpDisplay.textContent = '—';
+            el.ddpDisplay.className = 'ddp-price ddp-placeholder';
+            el.ddpRub.textContent = '';
+            return;
+        }
+        el.ddpDisplay.textContent = '¥ ' + cny.toFixed(2);
+        el.ddpDisplay.className = 'ddp-price';
+        const rate = num('rate');
+        el.ddpRub.textContent = rate > 0 ? '₽ ' + (cny * rate).toFixed(2) : '₽ —';
     }
 
     // ================================================================
@@ -725,6 +769,7 @@
         const qty = num('qty');
         const impFee = num('impFee');
         const tariffPct = num('tariff');
+        const rate = num('rate');
 
         // 增值税：空 → 22%，显式填 0 → 0%
         const vatRaw = String(el.vat.value || '').trim();
@@ -749,11 +794,9 @@
 
         // ---- 智能交付 ----
         if (currentMode === 'delivery') {
-            const rate = num('rate');
             const certFee = num('certFee');
             if (!exw || !w_raw || !v_raw || !rate) {
-                el.ddpDisplay.textContent = '—';
-                el.ddpDisplay.className = 'ddp-price ddp-placeholder';
+                setDdpDisplay(null);
                 ['dvFreight','dvTariff','dvCustoms','dvService','dvInsurance','dvCertFee','dvVat']
                     .forEach(id => { $(id).textContent = '—'; });
                 return;
@@ -776,8 +819,7 @@
             const vatAmt = baseBeforeVat * (vatPct / 100);
             const ddp = baseBeforeVat + vatAmt;
 
-            el.ddpDisplay.textContent = '¥ ' + ddp.toFixed(2);
-            el.ddpDisplay.className = 'ddp-price';
+            setDdpDisplay(ddp);
             el.dvFreight.textContent = '¥ ' + intlFreight.toFixed(2);
             el.dvTariff.textContent = '¥ ' + tariffAmt.toFixed(2);
             el.dvCustoms.textContent = '¥ ' + customsFeeCny.toFixed(2);
@@ -792,8 +834,7 @@
         if (currentMode === 'trade') {
             const expFee = num('expFee');
             if (!exw || !w_raw || !v_raw) {
-                el.ddpDisplay.textContent = '—';
-                el.ddpDisplay.className = 'ddp-price ddp-placeholder';
+                setDdpDisplay(null);
                 return;
             }
             if (qty > 0) {
@@ -814,8 +855,7 @@
             const base = exw * (1 + expFee / 100);
             const tariffCost = (base + cnFee) * tariffPct / 100;
             const ddp = (base + tariffCost + ruFee) * (1 + impFee / 100) * (1 + vatPct / 100);
-            el.ddpDisplay.textContent = '¥ ' + ddp.toFixed(2);
-            el.ddpDisplay.className = 'ddp-price';
+            setDdpDisplay(ddp);
             return;
         }
     }
@@ -973,7 +1013,7 @@
     }
 
     // ================================================================
-    //  ⭐ 专注模式：点击 DDP 价格 → 隐藏全部，只显示完税后交货价
+    //  ⭐ 专注模式：点击 DDP 价格 → 隐藏全部，只显示完税后交货价（¥ + ₽）
     // ================================================================
     const FOCUS_CLASS = 'focus-mode';
 
@@ -1028,9 +1068,13 @@
     el.modeDelivery.addEventListener('click', () => setMode('delivery'));
     el.modeTrade.addEventListener('click', () => setMode('trade'));
 
-    // ⭐ 点击 DDP 价格 = 进入 / 退出专注模式（不再复制）
+    // ⭐ 点击 DDP 价格（人民币 / 卢布任一行）= 进入 / 退出专注模式
     el.ddpDisplay.addEventListener('click', e => {
         e.stopPropagation();          // 防止冒泡到 document 又立刻退出
+        toggleFocusMode();
+    });
+    el.ddpRub.addEventListener('click', e => {
+        e.stopPropagation();
         toggleFocusMode();
     });
 
@@ -1065,7 +1109,7 @@
 
     applyLanguage('zh');
     setMode('trade');
-    refreshRate(false);   // ⭐ 打开页面自动填当日汇率
+    refreshRate(false);   // ⭐ 打开页面自动填当日汇率（两种模式共用）
 </script>
 </body>
 </html>
